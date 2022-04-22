@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
-	api "task-start/api/v1"
 	"strings"
+	api "task-start/api/v1"
 )
 
 const (
@@ -87,7 +87,7 @@ func LoadNetworkConfig(ctx context.Context, c containerd.Container) (*api.Networ
 	return e, nil
 }
 
-func withUpdateExtension(name string, extension interface{}) containerd.UpdateContainerOpts {
+func WithUpdateExtension(name string, extension interface{}) containerd.UpdateContainerOpts {
 	return func(ctx context.Context, _ *containerd.Client, c *containers.Container) error {
 		if name == "" {
 			return errors.Wrapf(errdefs.ErrInvalidArgument, "extension name must not be zero-length")

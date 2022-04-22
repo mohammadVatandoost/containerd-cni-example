@@ -5,7 +5,8 @@ import (
 )
 
 func NewCNI(conf *Config) (*CNI, error) {
-	ds, err := local.New("./cniconfigs")
+	// "./cniconfigs"
+	ds, err := local.New(conf.DsURI)
 	if err != nil {
 		return nil, err
 	}
