@@ -4,16 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containernetworking/cni/pkg/types/"
-	"github.com/containerd/containerd/pkg/cri/store/container"
-	"github.com/containernetworking/cni/libcni"
-	"github.com/pkg/errors"
 	"net"
 	api "task-start/api/v1"
 	"task-start/pkg/network"
+
+	"github.com/containernetworking/cni/libcni"
+	"github.com/pkg/errors"
 )
 
-func (s *Service) AddNetwork(networkName string, cninet *libcni.CNIConfig, nc *libcni.NetworkConfigList) (net.IP,error) {
+func (s *Service) AddNetwork(networkName string, cninet *libcni.CNIConfig, nc *libcni.NetworkConfigList) (net.IP, error) {
 	ctx := context.Background()
 	pids, err := s.task.Pids(ctx)
 	if err != nil {
@@ -36,17 +35,17 @@ func (s *Service) AddNetwork(networkName string, cninet *libcni.CNIConfig, nc *l
 		IfName:      ifaceName,
 	}
 
-	r, err := cninet.AddNetworkList(ctx, nc, rt)
+	r, err = cninet.AddNetworkList(ctx, nc, rt)
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding cni network")
 	}
 
-	res, err := current.GetResult(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting result from cninet")
+	// res, err := current.GetResult(r)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "error getting result from cninet")
 	}
 
-	result, err := res.GetAsVersion("0.3.0")
+	result, err := r.GetAsVersion("0.3.0")
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting result as version")
 	}
@@ -74,12 +73,12 @@ func (s *Service) AddNetwork(networkName string, cninet *libcni.CNIConfig, nc *l
 
 	networkConfig.Networks[networkName] = &api.ContainerNetworkConfig{
 		Interface: ifaceName,
-		IP:        ip.String(),
+		IP:        ip.String(), 
 	}
 
 	if err := container.Update(ctx, network.WithUpdateExtension(network.NetworkConfigExtension, networkConfig)); err != nil {
 		return nil, errors.Wrap(err, "error updating container extension")
 	}
-
+	
 	return ip, nil
 }

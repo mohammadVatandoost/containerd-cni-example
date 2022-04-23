@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"syscall"
+	"task-start/pkg/service"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -13,10 +13,18 @@ import (
 	"github.com/containerd/containerd/oci"
 )
 
+const (
+	NameSpace   = "example"
+	ContainerID = "redis-server"
+	ImageName   = "docker.io/library/redis:alpine"
+)
+
 func main() {
-	if err := redisExample(); err != nil {
-		log.Fatal(err)
-	}
+	testService := service.New(NameSpace, ContainerID, ImageName)
+
+	// if err := redisExample(); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 func redisExample() error {
