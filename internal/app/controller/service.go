@@ -2,13 +2,15 @@ package controller
 
 import (
 	"fmt"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"log"
 	"task-start/pkg/service"
 	"time"
 )
 
-func (cp *ControlPlane) StartService(ID string, name string) error {
+func (cp *ControlPlane) StartService(ID string, name string, envVars map[string]string,
+	volumeMounts []specs.Mount) error {
 	cp.lock.Lock()
 	defer cp.lock.Unlock()
 	_, ok := cp.services[name]
@@ -17,15 +19,17 @@ func (cp *ControlPlane) StartService(ID string, name string) error {
 	}
 
 	start := time.Now()
-	testService := service.New(cp.containerdClient, cp.NameSpace, name, ID)
+	testService := service.New(cp.containerdClient, cp.NameSpace, name, ID, envVars, volumeMounts)
 	err := testService.Run()
 	if err != nil {
 		return err
 	}
 
+	cp.services[name] = testService
+
 	err = testService.StartTask(cp.cni)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Printf("cold start: %v \n", time.Now().Sub(start).Milliseconds())
@@ -38,7 +42,7 @@ func (cp *ControlPlane) StopService(name string) error {
 	defer cp.lock.Unlock()
 
 	Service, ok := cp.services[name]
-	if ok {
+	if !ok {
 		return fmt.Errorf("can not stop the service, because service with name %v is not exist", name)
 	}
 

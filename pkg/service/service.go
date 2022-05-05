@@ -6,11 +6,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	"github.com/google/martian/log"
-)
-
-const (
-	ContainerAddress = "/run/containerd/containerd.sock"
-	SnapShotter      = "overlayfs"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type Service struct {
@@ -21,6 +17,8 @@ type Service struct {
 	task             containerd.Task
 	containerdClient *containerd.Client
 	exitStatusC      <-chan containerd.ExitStatus
+	reqEnvVars       map[string]string
+	volumeMounts     []specs.Mount
 }
 
 func (s *Service) Run() error {
@@ -42,6 +40,18 @@ func (s *Service) Run() error {
 		}
 		return nil
 	}
+	envs := prepareEnv(s.reqEnvVars)
+
+	mounts := getOSMounts()
+	mounts = append(mounts, s.volumeMounts...)
+	//for _, secret := range req.Secrets {
+	//	mounts = append(mounts, specs.Mount{
+	//		Destination: path.Join("/var/openfaas/secrets", secret),
+	//		Type:        "bind",
+	//		Source:      path.Join(secretMountPath, secret),
+	//		Options:     []string{"rbind", "ro"},
+	//	})
+	//}
 
 	log.Infof("Creating container, ContainerID: %v", containerInfo.ID)
 	//snapShotter := client.SnapshotService(SnapShotter)
@@ -52,7 +62,12 @@ func (s *Service) Run() error {
 		containerd.WithImage(image),
 		//containerd.WithSnapshot(s.ContainerID+"-snapshot"),
 		containerd.WithNewSnapshot(s.ContainerID+"-snapshot", image),
-		containerd.WithNewSpec(oci.WithImageConfig(image)),
+		containerd.WithNewSpec(
+			oci.WithHostname(s.ContainerID),
+			oci.WithImageConfig(image),
+			oci.WithEnv(envs),
+			oci.WithMounts(mounts),
+		),
 	)
 	if err != nil {
 		return err
