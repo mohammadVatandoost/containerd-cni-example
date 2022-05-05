@@ -1,9 +1,13 @@
 package service
 
-func New(namespace string, containerID string, image string) *Service {
+import "github.com/containerd/containerd"
+
+func New(containerdClient *containerd.Client, namespace string,
+	containerID string, image string) *Service {
 	return &Service{
-		Namespace: namespace,
-		ContainerID: containerID,
-		Image: image,
+		Namespace:        namespace,
+		ContainerID:      containerID,
+		Image:            image,
+		containerdClient: containerdClient,
 	}
 }

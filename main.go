@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"syscall"
+	"task-start/pkg/cninetwork"
 	"task-start/pkg/service"
 	"time"
 
@@ -14,13 +16,60 @@ import (
 )
 
 const (
-	NameSpace   = "example"
-	ContainerID = "redis-server"
-	ImageName   = "docker.io/library/redis:alpine"
+	NameSpace        = "example"
+	ContainerID      = "redis-server"
+	ImageName        = "docker.io/library/redis:alpine"
+	NetworkName      = "example"
+	CNIPath          = "/opt/cni/bin"
+	DSPath           = "./cniconfigs"
+	ContainerAddress = "/run/containerd/containerd.sock"
 )
 
 func main() {
-	testService := service.New(NameSpace, ContainerID, ImageName)
+	client, err := containerd.New(ContainerAddress)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	cni, err := cninetwork.InitNetwork()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	testService := service.New(client, NameSpace, ContainerID, ImageName)
+	err = testService.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer testService.Close()
+
+	err = testService.StartTask(cni)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//cniNetwork, err := network.NewCNI(&network.Config{
+	//	CNIPath: CNIPath,
+	//	DsURI:   DSPath,
+	//})
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	//cninet, nc, err := cniNetwork.GetCniConfig(NetworkName)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	//ip, err := testService.AddNetwork(NetworkName, cninet, nc)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//fmt.Printf("container IP: %v \n", ip.String())
+
+	time.Sleep(20 * time.Second)
+	testService.StopTask()
 
 	// if err := redisExample(); err != nil {
 	// 	log.Fatal(err)

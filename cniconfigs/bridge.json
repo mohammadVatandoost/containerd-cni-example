@@ -1,0 +1,18 @@
+{
+  "cniVersion": "0.3.1",
+  "name": "example",
+  "plugins": [
+    {
+      "type": "bridge",
+      "bridge": "example",
+      "isDefaultGateway": true,
+      "forceAddress": false,
+      "ipMasq": true,
+      "hairpinMode": true,
+      "ipam": {
+        "type": "host-local",
+        "subnet": "10.255.0.0/16"
+      }
+    }
+  ]
+}

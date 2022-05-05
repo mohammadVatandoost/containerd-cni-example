@@ -5,40 +5,51 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
+	"github.com/google/martian/log"
 )
 
 const (
 	ContainerAddress = "/run/containerd/containerd.sock"
+	SnapShotter      = "overlayfs"
 )
 
 type Service struct {
-	Namespace string
-	ContainerID string
-	Image string
-	container containerd.Container
-	task containerd.Task
-	exitStatusC <- chan containerd.ExitStatus
+	Namespace        string
+	ContainerID      string
+	Image            string
+	container        containerd.Container
+	task             containerd.Task
+	containerdClient *containerd.Client
+	exitStatusC      <-chan containerd.ExitStatus
 }
 
 func (s *Service) Run() error {
-	client, err := containerd.New(ContainerAddress)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
 
 	ctx := namespaces.WithNamespace(context.Background(), s.Namespace)
 
-	image, err := client.Pull(ctx, s.Image, containerd.WithPullUnpack)
+	image, err := s.containerdClient.Pull(ctx, s.Image, containerd.WithPullUnpack)
 	if err != nil {
 		return err
 	}
 
-	container, err := client.NewContainer(
+	containerInfo, err := s.containerdClient.ContainerService().Get(ctx, s.ContainerID)
+	if err == nil {
+		s.container, err = s.containerdClient.LoadContainer(ctx, containerInfo.ID)
+		if err != nil {
+			log.Errorf("can not load container, ContainerID: %v", containerInfo.ID)
+			return err
+		}
+		return nil
+	}
+
+	//snapShotter := client.SnapshotService(SnapShotter)
+	//ToDo: handle snapshotter is exist
+	container, err := s.containerdClient.NewContainer(
 		ctx,
 		s.ContainerID,
 		containerd.WithImage(image),
-		containerd.WithNewSnapshot(s.ContainerID+"-snapshot", image),
+		containerd.WithSnapshot(s.ContainerID+"-snapshot"),
+		//containerd.WithNewSnapshot(s.ContainerID+"-snapshot", image),
 		containerd.WithNewSpec(oci.WithImageConfig(image)),
 	)
 	if err != nil {
@@ -52,5 +63,3 @@ func (s *Service) Close() error {
 	ctx := namespaces.WithNamespace(context.Background(), s.Namespace)
 	return s.container.Delete(ctx, containerd.WithSnapshotCleanup)
 }
-
-
