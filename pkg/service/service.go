@@ -27,13 +27,14 @@ func (s *Service) Run() error {
 
 	ctx := namespaces.WithNamespace(context.Background(), s.Namespace)
 
-	image, err := s.containerdClient.Pull(ctx, s.Image, containerd.WithPullUnpack)
+	image, err := GetImage(ctx, s.containerdClient, s.Image)
 	if err != nil {
 		return err
 	}
 
 	containerInfo, err := s.containerdClient.ContainerService().Get(ctx, s.ContainerID)
 	if err == nil {
+		log.Infof("container exist, ContainerID: %v", containerInfo.ID)
 		s.container, err = s.containerdClient.LoadContainer(ctx, containerInfo.ID)
 		if err != nil {
 			log.Errorf("can not load container, ContainerID: %v", containerInfo.ID)
@@ -42,14 +43,15 @@ func (s *Service) Run() error {
 		return nil
 	}
 
+	log.Infof("Creating container, ContainerID: %v", containerInfo.ID)
 	//snapShotter := client.SnapshotService(SnapShotter)
 	//ToDo: handle snapshotter is exist
 	container, err := s.containerdClient.NewContainer(
 		ctx,
 		s.ContainerID,
 		containerd.WithImage(image),
-		containerd.WithSnapshot(s.ContainerID+"-snapshot"),
-		//containerd.WithNewSnapshot(s.ContainerID+"-snapshot", image),
+		//containerd.WithSnapshot(s.ContainerID+"-snapshot"),
+		containerd.WithNewSnapshot(s.ContainerID+"-snapshot", image),
 		containerd.WithNewSpec(oci.WithImageConfig(image)),
 	)
 	if err != nil {
